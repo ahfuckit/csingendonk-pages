@@ -1,0 +1,21 @@
+<html>
+<head>
+<title>CSingendonk's Pages</title>
+</head>
+<body>
+  <button id="pzbtn">Puzzle</button>
+  <button id="pngbtn">Pong</button>
+<script>
+  let allbtns = document.querySelectorAll('button');
+  const btns = {puzzle: allbtns[0],
+                pong: allbtns[1]
+                };
+  function navto(where = '#') {
+    try {
+    location.href = `${where}`;
+    } catch (error) { fetch(`${where}`) }
+  }
+  btns.puzzle.onClick(e, (e) => {navto(`./puzzle/index.html)})
+  btns.pong.onClick(e, (e) => {navto(`./games/superpong.html)})
+</body>
+</html>
