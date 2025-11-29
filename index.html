@@ -93,27 +93,39 @@
   </div>
 
   <script>
-    const btns = {
-      puzzle: document.getElementById('pzbtn'),
-      pong: document.getElementById('pngbtn')
-    };
-  function navto(where = '#') {
-    try {
-      fetch(`${where}`)
-        .then(response => response.text())
-        .then(html => {
-          document.open();
-          document.write(html);
-          document.close();
-        })
-        .catch(err => console.info("Failed to fetch page:", err));
-    } catch (error) {
-            console.info(error, 'falling back to href')
-            location.href = `${where}`;
-    }
+const btns = {
+  puzzle: document.getElementById('pzbtn'),
+  pong: document.getElementById('pngbtn'),
+  back: (() => {
+    const b = document.createElement('button');
+    b.textContent = 'Home';
+    b.style.zIndex = Number.MAX_SAFE_INTEGER;
+    return b;
+  })()
+};
+function navto(where = '#') {
+  try {
+    fetch(where)
+      .then(response => response.text())
+      .then(html => {
+        document.open();
+        document.write(html);
+        document.close();
+        document.body.appendChild(btns.back);
+        btns.back.onclick = () => navto('../csingendonk-pages');
+      })
+      .catch(err => {
+        console.info("Failed to fetch:", err);
+        location.href = where; // fallback
+      });
+  } catch (error) {
+    console.info(error, 'falling back to href');
+    location.href = where;
   }
-    btns.puzzle.addEventListener('click', () => navto('./puzzle/index.html'));
-    btns.pong.addEventListener('click', () => navto('./games/superpong.html'));
-  </script>
+}
+
+btns.puzzle?.addEventListener('click', () => navto('./puzzle/index.html'));
+btns.pong?.addEventListener('click', () => navto('./games/superpong.html'));
+</script>
 </body>
 </html>
