@@ -1,22 +1,119 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<title>CSingendonk's Pages</title>
+  <meta charset="UTF-8">
+  <title>CSingendonk's Pages</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #74ebd5, #ACB6E5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
+    }
+    .container {
+      text-align: center;
+      animation: fadeInUp 1.2s ease-out;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 30px;
+      font-size: 2.2em;
+      animation: glowText 2s ease-in-out infinite alternate;
+    }
+    button {
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      padding: 15px 30px;
+      margin: 10px;
+      font-size: 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    button:hover {
+      transform: scale(1.08);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+    }
+    #pzbtn {
+      background-color: #4CAF50;
+    }
+    #pzbtn:hover {
+      background-color: #45a049;
+    }
+    #pngbtn {
+      background-color: #2196F3;
+    }
+    #pngbtn:hover {
+      background-color: #1976D2;
+    }
+    i {
+      font-size: 20px;
+      transition: transform 0.4s ease;
+    }
+    /* Icon animations */
+    #pzbtn:hover i {
+      animation: bounce 0.6s;
+    }
+    #pngbtn:hover i {
+      animation: spin 0.8s linear;
+    }
+    /* Keyframes */
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes glowText {
+      from { text-shadow: 0 0 5px #fff, 0 0 10px #74ebd5; }
+      to { text-shadow: 0 0 10px #fff, 0 0 20px #ACB6E5; }
+    }
+  </style>
 </head>
 <body>
-  <button id="pzbtn">Puzzle</button>
-  <button id="pngbtn">Pong</button>
-<script>
-  let allbtns = document.querySelectorAll('button');
-  const btns = {puzzle: allbtns[0],
-                pong: allbtns[1]
-                };
+  <div class="container">
+    <h1>CSingendonk's Pages</h1>
+    <button id="pzbtn"><i>🧩</i> Puzzle</button>
+    <button id="pngbtn"><i>🏓</i> Pong</button>
+  </div>
+
+  <script>
+    const btns = {
+      puzzle: document.getElementById('pzbtn'),
+      pong: document.getElementById('pngbtn')
+    };
   function navto(where = '#') {
     try {
-    location.href = `${where}`;
-    } catch (error) { fetch(`${where}`) }
+      fetch(`${where}`)
+        .then(response => response.text())
+        .then(html => {
+          document.open();
+          document.write(html);
+          document.close();
+        })
+        .catch(err => console.info("Failed to fetch page:", err));
+    } catch (error) {
+            console.info(error, 'falling back to href')
+            location.href = `${where}`;
+    }
   }
-  btns.puzzle.addEventListener('click',(e) => {navto(`./puzzle/index.html`)});
-//  btns.pong.onClick((e) => {navto(`./games/superpong.html`)})
-    </script>
+    btns.puzzle.addEventListener('click', () => navto('./puzzle/index.html'));
+    btns.pong.addEventListener('click', () => navto('./games/superpong.html'));
+  </script>
 </body>
 </html>
