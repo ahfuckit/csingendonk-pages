@@ -1,2 +1,2 @@
 # csingendonk-pages
-Pages
+<a href="https://ahfuckit.github.io/csingendonk-pages/">Pages</a>
