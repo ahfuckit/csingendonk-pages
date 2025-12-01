@@ -90,12 +90,14 @@
     <h1>CSingendonk's Pages</h1>
     <button id="pzbtn"><i>🧩</i> Puzzle</button>
     <button id="pngbtn"><i>🏓</i> Pong</button>
+    <button id="mzbtn"><i>🪤</i> Maze</button>
   </div>
 
   <script>
     const btns = {
       puzzle: document.getElementById('pzbtn'),
       pong: document.getElementById('pngbtn'),
+      maze: document.getElementById('mzbtn'),
     };
 
     function navto(where = '#') {
@@ -104,6 +106,7 @@
 
     btns.puzzle?.addEventListener('click', () => navto('./puzzle/index.html'));
     btns.pong?.addEventListener('click', () => navto('./games/superpong.html'));
+    btns.maze?.addEventListener('click', () => navto('./games/maze.html'));
   </script>
 </body>
 </html>
