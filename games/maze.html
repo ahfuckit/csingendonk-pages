@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="author" content="Chris Singendonk" />
+  <meta name="copyright" content="Chris Singendonk 2023" />
+  <title>Maze Game with Highscore & coach</title>
+<style>
+  /* General styling */
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: background-color 0.3s, color 0.3s;
+    background: #f5f5f5;
+  }
+
+  /* Top bar */
+  #topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 0.4rem 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background-color: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(4px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    z-index: 99;
+  }
+
+  #showHideControls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    font-size: 1.4rem;
+    border-radius: 999px;
+    background-color: #f0f0f0;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  #showHideControls:hover {
+    background-color: #e0e0e0;
+  }
+
+  #topbar label {
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  /* Controls panel (responsive flex column) */
+  #controls {
+    position: fixed;
+    top: 3rem; /* under topbar */
+    right: 0.75rem;
+    background-color: rgba(255, 255, 255, 0.96);
+    padding: 0.5rem 0.75rem 0.75rem;
+    z-index: 10;
+    display: flex;        
+    flex-direction: column;
+    gap: 0.35rem;
+    align-items: flex-start;
+    max-width: min(16rem, 90vw);
+    max-height: calc(100vh - 5.5rem);
+    overflow-y: auto;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-sizing: border-box;
+  }
+
+  #controls label {
+    font-size: 0.85rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0;
+  }
+
+  #controls input[type="number"] {
+    width: 3.2rem;
+  }
+
+  #controls select {
+    font-size: 0.85rem;
+  }
+
+  #controls button {
+    font-size: 0.85rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.3rem;
+    border: 1px solid #ccc;
+    background: #f9f9f9;
+    cursor: pointer;
+  }
+
+  #controls button:hover {
+    background: #f0f0f0;
+  }
+
+  /* Maze grid in the center */
+#grid {
+    display: grid;
+    position: fixed;
+    top: 3rem;
+    bottom: 2rem;
+    left: 5vw;
+    right: 5vw;
+    margin: 0 auto;
+    transition: transform 0.2s ease-in-out;
+    justify-content: center;
+    align-content: center;
+}
+
+#grid * {
+    transition: all 0.1s ease-in;
+}
+
+  .grid-item {
+    border: 1px solid #ddd;
+    box-sizing: border-box;
+  }
+
+  .wall {
+    background-color: black;
+  }
+
+  .maze-path {
+    background-color: white;
+  }
+
+  .start-cell {
+    background-color: rgb(251, 255, 0);
+    border: 2px groove #90ff0f91;
+    border-radius: 50%;
+  }
+
+  .end-cell {
+    background-color: orange;
+    position: relative;
+  }
+
+  .dead-end {
+    outline: 1px dashed magenta;
+    color: #0000ff;
+    background-color: purple;
+  }
+
+  /* Bottom HUD / progress bar (single line) */
+#progress {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #fff;
+    padding: 0.2rem;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    font-size: 0.95rem;
+    line-height: 1.05rem;
+    overflow: hidden;
+    flex-wrap: wrap;
+}
+
+  #progress span,
+  #progress h5,
+  #progress strong {
+    display: inline;
+    margin: 0;
+    padding: 0;
+  }
+
+  #progressCount {
+    font-weight: bold;
+  }
+
+  /* Visual progress bar inside HUD */
+  #progressBar {
+    flex: 0 0 140px;           /* fixed-ish width bar */
+    height: 0.5rem;
+    background-color: #ddd;
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  #progressBarFilled {
+    height: 100%;
+    background-color: #76c7c0;
+    width: 0;
+    transition: width 0.2s ease-out;
+  }
+
+  /* No wrapping inside HUD */
+  #progress * {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #coach {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(255, 255, 255, 0.95);
+    padding: 1%;
+    border: 2px solid #333;
+    z-index: 20;
+    display: flex;
+    max-width: 75vw;
+    max-height: 75vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    min-height: fit-content;
+    min-width: fit-content;
+    flex-direction: column;
+    justify-content: stretch;
+    align-content: space-evenly;
+  }
+
+  #coach h2 {
+    margin: 0 0 0.5rem;
+  }
+
+  #coach button {
+    margin-top: 0.75rem;
+    padding: 0.35rem 0.8rem;
+    font-size: 0.9rem;
+    border-radius: 0.3rem;
+    border: 1px solid #444;
+    background: #f5f5f5;
+    cursor: pointer;
+  }
+
+  #coach button:hover {
+    background: #e5e5e5;
+  }
+
+  p {
+    margin: 0.1rem;
+    display: inline-flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: stretch;
+    justify-content: space-between;
+    align-content: stretch;
+    max-width: 100%;
+    max-height: max-content;
+    letter-spacing: normal;
+  }
+
+  /* Dark mode styles */
+  body.dark-mode {
+    background-color: #333;
+    color: #eee;
+  }
+
+  body.dark-mode #topbar,
+  body.dark-mode #controls,
+  body.dark-mode #progress,
+  body.dark-mode #coach {
+    background-color: rgba(30, 30, 30, 0.96);
+    color: #eee;
+  }
+
+  body.dark-mode #controls button,
+  body.dark-mode #coach button {
+    background-color: #333;
+    border-color: #555;
+    color: #eee;
+  }
+
+  body.dark-mode #controls button:hover,
+  body.dark-mode #coach button:hover {
+    background-color: #444;
+  }
+
+  body.dark-mode .grid-item {
+    border-color: #444;
+  }
+
+  body.dark-mode #progressBar {
+    background-color: #444;
+  }
+
+  body.dark-mode #progressBarFilled {
+    background-color: #4fb0a8;
+  }
+</style>
+
+</head>
+<body>
+  <div id="topbar">
+    <div id="showHideControls">⚙️</div>
+    <label><input type="checkbox" id="goBackInput" /> Unlock 🔙 Travel</label>
+  </div>
+  <div id="controls">
+
+    <label>Width: <input type="number" id="widthIn" value="15" min="5" step="2" /></label>
+    <label>Height: <input type="number" id="heightIn" value="15" min="5" step="2" /></label>
+    <button id="refreshButton">Regenerate Maze</button>
+    <label><input type="checkbox" id="themeToggle" /> Dark Mode</label>
+    <label>Difficulty:
+      <select id="difficultySelect">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+    </label>
+    <button id="resetButton">Reset Game</button>
+    <button id="pauseButton">Pause Timer</button>
+    <button id="undoButton" disabled>Undo Move</button>
+    <button id="showcoach">Instructions</button>
+  </div>
+  <div id="grid">
+  </div>
+  <div id="progress">
+    Progress: <span id="progressCount">0%</span>
+    <div id="progressBar" class="progress-bar">
+      <div id="progressBarFilled" class="progress-bar-filled"></div>
+    </div>
+    Time: <span id="timer">00:00</span>
+    Score: <span id="score">0</span>
+    <span><h5><strong id="timer2"></strong></h5></span>
+    <span><h5><strong id="score2"></strong><strong id="maxScore"></strong></h5></span>
+    <span><h5>Highscore: <strong  id="highscore">0</strong></h5></span>
+  </div>
+  <div id="coach">
+    <h2>How to Play</h2>
+    <p>Use the arrow keys (or swipe) to move the player.</p>
+    <p>If "Unlock 🔙 Travel" is unchecked, every cell you leave turns into a wall—so plan your route carefully!</p>
+    <p>Collect bonus points by visiting dead ends (cells with only one path).</p>
+    <p>The timer counts down your performance; time penalties will be deducted from your score.</p>
+    <p>When you finish the maze, you get bonus points and progress to a larger maze. Your scores accumulate toward a highscore.</p>
+    <button id="closecoach">Close</button>
+  </div>
+<script>
+  /**
+  *@copyright © Chris Singendonk 2023
+  **/
+  function getControls() {
+    // currently unused, left here as a placeholder
+  }
+
+  const dqsi = (qs) => document.querySelector(`#${qs}`);
+
+  const objEls = {
+    controls: {
+      pane: dqsi('controls'),
+      show: dqsi('showHideControls'),
+      theme: dqsi('themeToggle'),
+      maze: {
+        size: { x: dqsi('widthIn'), y: dqsi('heightIn') },
+        regen: dqsi('refreshButton'),
+        revdir: dqsi('goBackInput'),
+        difsel: dqsi('difficultySelect'),
+        reset: dqsi('resetButton'),
+        pause: dqsi('pauseButton'),
+        undo: dqsi('undoButton'),
+        info: dqsi('showcoach'),
+      }
+    },
+    hud: {
+      box: dqsi('progress'),
+      count: dqsi('progressCount'),
+      bar: dqsi('progressBar'),
+      fill: dqsi('progressBarFilled'),
+      time: dqsi('timer'),
+      score: dqsi('score'),
+      hiscore: dqsi('highscore'),
+      timerLabel: dqsi('timerLabel'),
+      scoreLabel: dqsi('scoreLabel'),
+      maxScore: dqsi('maxScore'),
+    }
+  };
+
+  // Toggle controls pane
+  objEls.controls.show.addEventListener('click', () => {
+    const pane = objEls.controls.pane;
+    const currentDisplay = pane.style.display || getComputedStyle(pane).display;
+    pane.style.display = currentDisplay === 'none' ? 'flex' : 'none';
+  });
+
+  // ---------------- Global Variables & State ----------------
+  let rows, columns, maze, mazecells, currentX, currentY, startTime, timerInterval;
+  let isTimerPaused = false, timeElapsed = 0;
+  let score = 0, movePoints = 1, deadEndBonus = 10, finishBonus = 100, timePenaltyPerSec = 1;
+  let collectedDeadEnds = 0;
+  let previousMoves = []; // currently unused but kept for potential future
+  let highscore = Number(localStorage.getItem('MazeHighscore')) || 0;
+
+  const mazeState = { start: {}, current: {}, previous: {} };
+  const _state = { cells: [], walls: [], paths: [], player: [], progress: 0 };
+
+  // Initial highscore display
+  if (objEls.hud.hiscore) {
+    objEls.hud.hiscore.textContent = highscore;
+  }
+
+  // ---------------- State Functions ----------------
+  function saveState(phase = 'current') {
+    localStorage.setItem('Maze_' + phase + 'State', JSON.stringify(mazeState[phase]));
+  }
+
+  function loadState(phase = 'current') {
+    const savedState = JSON.parse(localStorage.getItem('Maze_' + phase + 'State'));
+    if (savedState) {
+      mazeState[phase] = savedState;
+    }
+  }
+
+  function getState(data = [[]]) {
+    const s = Object.assign({}, _state);
+    try {
+      s.cells = data;
+      data.forEach((row, ri) => {
+        if (Array.isArray(row)) {
+          row.forEach((cell, ci) => {
+            if (cell) {
+              s.paths.push([ri, ci]);
+            } else {
+              s.walls.push([ri, ci]);
+            }
+          });
+        }
+      });
+    } catch (error) {
+      console.error(error);
+    }
+    const gridItems = Array.from(document.querySelectorAll('.grid-item'));
+    gridItems.forEach((c, i) => {
+      const x = Math.floor(i / columns);
+      const y = i % columns;
+      if (c.classList.contains('start-cell')) s.start = [x, y];
+      if (c.classList.contains('end-cell')) s.end = [x, y];
+    });
+    s.player = s.start;
+    s.progress = Math.floor((s.walls.length / gridItems.length) * 100);
+    s.rows = rows;
+    s.columns = columns;
+    return s;
+  }
+
+  // ---------------- Maze Functions ----------------
+  function isValid(x, y) {
+    return x >= 0 && x < rows && y >= 0 && y < columns;
+  }
+
+  function generateMaze(x, y) {
+    maze[x][y] = true;
+    const directions = [[-2, 0], [2, 0], [0, -2], [0, 2]];
+    directions.sort(() => Math.random() - 0.5);
+    for (const [dx, dy] of directions) {
+      const newX = x + dx;
+      const newY = y + dy;
+      if (isValid(newX, newY) && !maze[newX][newY]) {
+        maze[x + dx / 2][y + dy / 2] = true;
+        generateMaze(newX, newY);
+      }
+    }
+    // Initial "start" state gets overwritten later by getState, but we keep this call
+    saveState('start');
+  }
+
+  function calculateCellSize() {
+    const availableWidth = window.innerWidth;
+    const availableHeight = window.innerHeight - 100; // Exclude controls & progress
+    const cellW = Math.floor(availableWidth / columns);
+    const cellH = Math.floor(availableHeight / rows);
+    return [cellW, cellH];
+  }
+
+  // ---------------- Dead End Detection ----------------
+  function markDeadEnds() {
+    for (let i = 0; i < rows; i++) {
+      for (let j = 0; j < columns; j++) {
+        if (
+          mazecells[i][j].classList.contains('maze-path') ||
+          mazecells[i][j].classList.contains('start-cell') ||
+          mazecells[i][j].classList.contains('end-cell')
+        ) {
+          let count = 0;
+          const neighbors = [
+            [i - 1, j],
+            [i + 1, j],
+            [i, j - 1],
+            [i, j + 1]
+          ];
+          neighbors.forEach(([nx, ny]) => {
+            if (isValid(nx, ny)) {
+              if (
+                mazecells[nx][ny].classList.contains('maze-path') ||
+                mazecells[nx][ny].classList.contains('start-cell') ||
+                mazecells[nx][ny].classList.contains('end-cell')
+              ) {
+                count++;
+              }
+            }
+          });
+          if (
+            count === 1 &&
+            !mazecells[i][j].classList.contains('dead-end') &&
+            !mazecells[i][j].classList.contains('start-cell') &&
+            !mazecells[i][j].classList.contains('end-cell')
+          ) {
+            mazecells[i][j].classList.add('dead-end');
+          }
+        }
+      }
+    }
+  }
+
+  // ---------------- Score / HUD Helpers ----------------
+  function updateScoreDisplay() {
+    if (objEls.hud.score) {
+      objEls.hud.score.textContent = score;
+    }
+    if (objEls.hud.scoreLabel) {
+      objEls.hud.scoreLabel.textContent = score;
+    }
+  }
+
+  function updateProgress() {
+    const totalCells = rows * columns;
+    const wallCells = document.querySelectorAll('.wall').length;
+    const progress = Math.floor((wallCells / totalCells) * 100);
+    const adjustedProgress = Math.max(0, (progress - 50) * 2);
+    if (objEls.hud.count) {
+      objEls.hud.count.textContent = `${adjustedProgress}%`;
+    }
+    if (objEls.hud.fill) {
+      objEls.hud.fill.style.width = `${adjustedProgress}%`;
+    }
+  }
+
+  function updateTimer() {
+    if (isTimerPaused) return;
+    const elapsedSeconds = Math.floor((Date.now() - startTime + timeElapsed) / 1000);
+    const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+    const seconds = String(elapsedSeconds % 60).padStart(2, '0');
+    const value = `${minutes}:${seconds}`;
+    if (objEls.hud.time) {
+      objEls.hud.time.textContent = value;
+    }
+    if (objEls.hud.timerLabel) {
+      objEls.hud.timerLabel.textContent = value;
+    }
+  }
+
+  // ---------------- Regenerate Maze ----------------
+  function regenerateMaze() {
+    rows = parseInt(objEls.controls.maze.size.y.value, 10);
+    columns = parseInt(objEls.controls.maze.size.x.value, 10);
+
+    if (rows % 2 === 0) rows++;
+    if (columns % 2 === 0) columns++;
+
+    maze = Array.from({ length: rows }, () => Array(columns).fill(false));
+    mazecells = Array.from({ length: rows }, () => Array(columns));
+
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+
+    generateMaze(1, 1);
+    maze[rows - 2][columns - 2] = true;
+
+    const cellSize = calculateCellSize();
+    grid.style.gridTemplateColumns = `repeat(${columns}, auto`;
+    grid.style.gridTemplateRows = `repeat(${rows}, auto`;
+
+    for (let i = 0; i < rows; i++) {
+      for (let j = 0; j < columns; j++) {
+        const cell = document.createElement('div');
+        cell.classList.add('grid-item');
+        cell.style.width = `${cellSize[0]}px`;
+        cell.style.height = `${cellSize[1]}px`;
+        if (i === 1 && j === 1) {
+          cell.classList.add('start-cell');
+        } else if (i === rows - 2 && j === columns - 2) {
+          cell.classList.add('end-cell');
+        } else if (maze[i][j]) {
+          cell.classList.add('maze-path');
+        } else {
+          cell.classList.add('wall');
+        }
+        grid.appendChild(cell);
+        mazecells[i][j] = cell;
+      }
+    }
+
+    markDeadEnds();
+
+    currentX = 1;
+    currentY = 1;
+    startTime = Date.now();
+    timeElapsed = 0;
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(updateTimer, 1000);
+    score = 0;
+    collectedDeadEnds = 0;
+    updateScoreDisplay();
+    if (objEls.hud.count) {
+      objEls.hud.count.textContent = '0%';
+    }
+
+    mazeState.start = getState(maze);
+    mazeState.current = getState(maze);
+    saveState('start');
+    if (objEls.controls.maze.undo) {
+      objEls.controls.maze.undo.disabled = true;
+    }
+    updateProgress();
+  }
+
+  // ---------------- Movement & Strategic Cell Filling ----------------
+  function moveCell(event) {
+    let newX = currentX, newY = currentY;
+
+    const key = event.key || event.swipeDirection;
+    if (!key) return;
+
+    switch (key) {
+      case 'ArrowUp': newX--; break;
+      case 'ArrowDown': newX++; break;
+      case 'ArrowLeft': newY--; break;
+      case 'ArrowRight': newY++; break;
+      default: return;
+    }
+
+    if (!isValid(newX, newY)) return;
+    if (mazecells[newX][newY].classList.contains('wall')) return;
+
+    const previousX = currentX;
+    const previousY = currentY;
+
+    mazecells[currentX][currentY].classList.remove('start-cell');
+    mazecells[currentX][currentY].classList.add('maze-path');
+
+    currentX = newX;
+    currentY = newY;
+    mazecells[currentX][currentY].classList.add('start-cell');
+
+    // Award move points
+    score += movePoints;
+
+    // If the "Unlock 🔙 Travel" toggle is OFF, fill the cell we left.
+    if (!objEls.controls.maze.revdir.checked) {
+      mazecells[previousX][previousY].classList.replace('maze-path', 'wall');
+    }
+
+    // Dead-end collection: if entering a dead-end cell, collect bonus.
+    if (mazecells[currentX][currentY].classList.contains('dead-end')) {
+      mazecells[currentX][currentY].classList.remove('dead-end');
+      collectedDeadEnds++;
+      score += deadEndBonus;
+    }
+
+    // Save state for undo.
+    mazeState.previous = Object.assign({}, mazeState.current);
+    mazeState.current = getState(maze);
+    saveState('current');
+
+    if (objEls.controls.maze.undo) {
+      objEls.controls.maze.undo.disabled = false;
+    }
+
+    updateProgress();
+    updateScoreDisplay();
+
+    // Check for completion
+    if (mazecells[currentX][currentY].classList.contains('end-cell')) {
+      const elapsedSeconds = Math.floor((Date.now() - startTime + timeElapsed) / 1000);
+      const timePenalty = elapsedSeconds * timePenaltyPerSec;
+      score += Math.max(finishBonus - timePenalty, 0);
+      updateScoreDisplay();
+
+      if (score > highscore) {
+        highscore = score;
+        localStorage.setItem('MazeHighscore', highscore);
+        if (objEls.hud.hiscore) {
+          objEls.hud.hiscore.textContent = highscore;
+        }
+      }
+      mazeCompleted();
+    }
+  }
+
+  function undoMove() {
+    if (mazeState.previous.player) {
+      const [prevX, prevY] = mazeState.previous.player;
+      mazecells[currentX][currentY].classList.remove('start-cell');
+      mazecells[currentX][currentY].classList.add('maze-path');
+      currentX = prevX;
+      currentY = prevY;
+      mazecells[currentX][currentY].classList.add('start-cell');
+      mazeState.current = Object.assign({}, mazeState.previous);
+      saveState('current');
+      updateProgress();
+    }
+  }
+
+  // ---------------- Completion & Timer ----------------
+  function mazeCompleted() {
+    alert('Maze Complete! The maze will now regenerate with a larger size.');
+    objEls.controls.maze.size.x.value = Math.min(columns + 2, 51);
+    objEls.controls.maze.size.y.value = Math.min(rows + 2, 51);
+    regenerateMaze();
+  }
+
+  function toggleTheme() {
+    document.body.classList.toggle('dark-mode');
+  }
+
+  function pauseTimer() {
+    if (isTimerPaused) {
+      startTime = Date.now();
+      timerInterval = setInterval(updateTimer, 1000);
+    } else {
+      timeElapsed += Date.now() - startTime;
+      clearInterval(timerInterval);
+    }
+    isTimerPaused = !isTimerPaused;
+    if (objEls.controls.maze.pause) {
+      objEls.controls.maze.pause.textContent = isTimerPaused ? 'Resume Timer' : 'Pause Timer';
+    }
+  }
+
+  // Reset the game: restore the maze to its initial state, apply a score penalty, update state, and update grid.
+  function resetGame() {
+    const startState = JSON.parse(localStorage.getItem('Maze_startState'));
+    if (!startState) {
+      regenerateMaze();
+      return;
+    }
+
+    rows = startState.rows;
+    columns = startState.columns;
+    maze = startState.cells;
+
+    const grid = document.getElementById('grid');
+    const cellSize = calculateCellSize();
+    grid.style.gridTemplateColumns = `repeat(${columns}, ${cellSize[0]}px)`;
+    grid.style.gridTemplateRows = `repeat(${rows}, ${cellSize[1]}px)`;
+
+    for (let i = 0; i < rows; i++) {
+      for (let j = 0; j < columns; j++) {
+        let cell = mazecells[i][j];
+        if (!cell) {
+          cell = document.createElement('div');
+          cell.classList.add('grid-item');
+          grid.appendChild(cell);
+          mazecells[i][j] = cell;
+        }
+        cell.style.width = `${cellSize[0]}px`;
+        cell.style.height = `${cellSize[1]}px`;
+        if (maze[i][j]) {
+          cell.className = 'grid-item maze-path';
+        } else {
+          cell.className = 'grid-item wall';
+        }
+      }
+    }
+
+    const [startX, startY] = startState.start;
+    const [endX, endY] = startState.end;
+    mazecells[startX][startY].classList.remove('maze-path', 'wall');
+    mazecells[startX][startY].classList.add('start-cell');
+    mazecells[endX][endY].classList.remove('maze-path', 'wall');
+    mazecells[endX][endY].classList.add('end-cell');
+
+    currentX = startX;
+    currentY = startY;
+
+    score = Math.max(score - 50, 0); // penalty
+    updateScoreDisplay();
+
+    mazeState.current = startState;
+    mazeState.previous = {};
+    saveState('current');
+    saveState('previous');
+    updateProgress();
+  }
+
+  // ---------------- coach Overlay ----------------
+  function showcoach() {
+    const info = document.querySelector('#coach');
+    const dis = info.style.display || getComputedStyle(info).display;
+    const nd = dis === 'none' ? 'flex' : 'none';
+    info.style.display = nd;
+  }
+
+  // ---------------- Touch Controls for Continuous Swipe ----------------
+  let touchStartX = 0, touchStartY = 0, currentSwipeDirection = null, swipeInterval = null;
+  const minSwipeDistance = 20; // Minimum movement (in pixels) before considering a swipe
+
+  function angleFromStart(currentX, currentY) {
+    const deltaX = currentX - touchStartX;
+    const deltaY = currentY - touchStartY;
+    let angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+    if (angle < 0) angle += 360;
+    return angle;
+  }
+
+  function getDirectionFromAngle(angle) {
+    if (angle >= 45 && angle < 135) {
+      return 'ArrowDown';
+    } else if (angle >= 135 && angle < 225) {
+      return 'ArrowLeft';
+    } else if (angle >= 225 && angle < 315) {
+      return 'ArrowUp';
+    } else {
+      return 'ArrowRight';
+    }
+  }
+
+  function handleTouchStart(event) {
+    if (event.touches.length === 1) {
+      const touch = event.touches[0];
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+      currentSwipeDirection = null;
+    }
+  }
+
+  function handleTouchMove(event) {
+    if (event.touches.length === 1) {
+      const touch = event.touches[0];
+      const currentX = touch.clientX;
+      const currentY = touch.clientY;
+      const distance = Math.hypot(currentX - touchStartX, currentY - touchStartY);
+      if (distance >= minSwipeDistance) {
+        const angle = angleFromStart(currentX, currentY);
+        currentSwipeDirection = getDirectionFromAngle(angle);
+      }
+      if (!swipeInterval) {
+        swipeInterval = setInterval(() => {
+          if (currentSwipeDirection) {
+            moveCell({ key: currentSwipeDirection, swipeDirection: currentSwipeDirection });
+          }
+        }, 200);
+      }
+      event.preventDefault();
+    }
+  }
+
+  function handleTouchEnd() {
+    if (swipeInterval) {
+      clearInterval(swipeInterval);
+      swipeInterval = null;
+    }
+  }
+
+  // ---------------- Event Listeners ----------------
+  window.onload = function () {
+    loadState('start');
+    regenerateMaze();
+
+    window.addEventListener('keydown', moveCell);
+
+    objEls.controls.maze.regen.addEventListener('click', regenerateMaze);
+    objEls.controls.theme.addEventListener('change', toggleTheme);
+    objEls.controls.maze.pause.addEventListener('click', pauseTimer);
+    objEls.controls.maze.reset.addEventListener('click', resetGame);
+    objEls.controls.maze.undo.addEventListener('click', undoMove);
+    objEls.controls.maze.info.addEventListener('click', showcoach);
+    dqsi('closecoach').addEventListener('click', showcoach);
+
+    const grid = document.getElementById('grid');
+    grid.addEventListener('touchstart', handleTouchStart, { passive: false });
+    grid.addEventListener('touchmove', handleTouchMove, { passive: false });
+    grid.addEventListener('touchend', handleTouchEnd, { passive: false });
+  };
+</script>
+
+</body>
+</html>
