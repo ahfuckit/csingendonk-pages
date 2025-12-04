@@ -9,6 +9,7 @@ const resetBtn = document.getElementById("reset");
 const undoBtn = document.getElementById("undo");
 const revChk = document.getElementById("rev");
 const hintBtn = document.getElementById("hint");
+const deadHintBtn = document.getElementById("deadHint");
 const diffSel = document.getElementById("difficulty");
 const scoreEl = document.getElementById("score");
 const progressEl = document.getElementById("progress");
@@ -28,6 +29,13 @@ let ctx =
 const astarWorker =
   typeof Worker !== "undefined"
     ? new Worker(new URL("./astar-worker.js", import.meta.url), {
+        type: "module"
+      })
+    : null;
+
+const bfsWorker =
+  typeof Worker !== "undefined"
+    ? new Worker(new URL("./bfs-worker.js", import.meta.url), {
         type: "module"
       })
     : null;
@@ -713,6 +721,64 @@ if (!astarWorker) {
   };
 }
 
+if (!bfsWorker) {
+  if (deadHintBtn) deadHintBtn.disabled = true;
+} else if (deadHintBtn) {
+  deadHintBtn.addEventListener("click", () => {
+    deadHintBtn.disabled = true;
+
+    const grid = [];
+    const deadEnds = [];
+
+    for (let y = 0; y < state.rows; y++) {
+      const row = new Array(state.cols);
+      for (let x = 0; x < state.cols; x++) {
+        const cell = state.maze[y][x];
+        const walkable = cell.type === "path" && !cell.filled;
+        row[x] = walkable ? 1 : 0;
+
+        if (walkable && cell.deadEnd) {
+          deadEnds.push([x, y]);
+        }
+      }
+      grid.push(row);
+    }
+
+    bfsWorker.postMessage({
+      cmd: "bfs-deadend",
+      grid,
+      cols: state.cols,
+      rows: state.rows,
+      start: { x: state.player.gridX, y: state.player.gridY },
+      deadEnds
+    });
+  });
+
+  bfsWorker.onmessage = (e) => {
+    deadHintBtn.disabled = false;
+    const { cmd, path } = e.data || {};
+    if (cmd !== "result") return;
+
+    if (!path) {
+      // No reachable dead-end from current position
+      state.hintPath = null;
+      markAllDirty();
+      console.log("No reachable dead-end from here.");
+      return;
+    }
+
+    // Reuse the same render path as A*
+    state.hintPath = path;
+    if (state.hintTimeout) clearTimeout(state.hintTimeout);
+    state.hintTimeout = setTimeout(() => {
+      state.hintPath = null;
+      markAllDirty();
+    }, 3000);
+
+    markAllDirty();
+  };
+}
+
 // Input handling
 let holdInterval = null;
 
@@ -871,6 +937,7 @@ window.__MAZE_STATE = state;
 window.__REGEN = () => {
   regenBtn.click();
 };
+
 
 
 
