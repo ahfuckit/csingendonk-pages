@@ -97,7 +97,7 @@ const state = {
   timerTick: null,
   animations: [], // fill animations
   particles: [], // Particle objects auto-removed
-  dirtySet: new Set(), // "x,y" strings
+  dirtySet: new Set(), // "x,y" strings (now mostly unused)
   hintPath: null,
   hintTimeout: null,
 };
@@ -114,7 +114,7 @@ class MazeCell {
 }
 
 class Player {
-  constructor(gridX, gridY, cellSize, speedCellsPerSec = 6) {
+  constructor(gridX, gridY, cellSize, speedCellsPerSec = 6.5) {
     this.gridX = gridX;
     this.gridY = gridY;
     this.cellSize = cellSize;
@@ -173,10 +173,11 @@ class Player {
   }
 }
 
+// Particles now treat x/y as pixel coordinates, not grid coords
 class Particle {
-  constructor(x, y, cellSize) {
-    this.px = x * cellSize;
-    this.py = y * cellSize;
+  constructor(px, py, cellSize) {
+    this.px = px;
+    this.py = py;
     const angle = Math.random() * Math.PI * 2;
     const speed = (0.08 + Math.random() * 0.2) * cellSize;
     this.vx = Math.cos(angle) * speed;
@@ -186,10 +187,9 @@ class Particle {
     this.color = ["#ffd26a", "#ff9b9b", "#9bf3c6", "#d0a0ff"][
       Math.floor(Math.random() * 4)
     ];
-    this.size = Math.max(1, cellSize * 0.08);
+    this.size = Math.max(2, cellSize * 0.12);
   }
   update(dt) {
-    this.vy += 0.0006 * dt * 1000 * 0.0; // placeholder; essentially no gravity
     this.px += this.vx * dt;
     this.py += this.vy * dt;
     this.age += dt * 1000;
@@ -220,6 +220,39 @@ function markAllDirty() {
   for (let y = 0; y < state.rows; y++) {
     for (let x = 0; x < state.cols; x++) {
       markDirty(x, y);
+    }
+  }
+}
+
+// Generic dead-end recompute helper for an existing maze
+function recomputeAllDeadEnds() {
+  if (!state.maze) return;
+
+  state.originalPathCount = 0;
+
+  for (let y = 0; y < state.rows; y++) {
+    for (let x = 0; x < state.cols; x++) {
+      const cell = state.maze[y][x];
+      cell.deadEnd = false;
+      if (cell.type === "path") {
+        state.originalPathCount++;
+        let count = 0;
+        [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+        ].forEach(([dx, dy]) => {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (inBounds(nx, ny) && state.maze[ny][nx].type === "path") count++;
+        });
+
+        const isStart =
+          state.start && x === state.start.x && y === state.start.y;
+        const isEnd = state.end && x === state.end.x && y === state.end.y;
+        cell.deadEnd = count === 1 && !isStart && !isEnd;
+      }
     }
   }
 }
@@ -295,36 +328,12 @@ function generateMazeIterative() {
   maze[state.start.y][state.start.x].type = "path";
   maze[state.end.y][state.end.x].type = "path";
 
-  // dead-end marking
-  for (let y = 0; y < state.rows; y++) {
-    for (let x = 0; x < state.cols; x++) {
-      const cell = maze[y][x];
-      cell.deadEnd = false;
-      if (cell.type === "path") {
-        let count = 0;
-        [
-          [1, 0],
-          [-1, 0],
-          [0, 1],
-          [0, -1],
-        ].forEach(([dx, dy]) => {
-          const nx = x + dx;
-          const ny = y + dy;
-          if (inBounds(nx, ny) && maze[ny][nx].type === "path") count++;
-        });
-        if (count === 1) cell.deadEnd = true;
-      }
-    }
-  }
-
-  state.originalPathCount = 0;
-  for (let y = 0; y < state.rows; y++) {
-    for (let x = 0; x < state.cols; x++) {
-      if (maze[y][x].type === "path") state.originalPathCount++;
-    }
-  }
-
   state.maze = maze;
+
+  // compute dead-ends + originalPathCount
+  recomputeAllDeadEnds();
+
+  // run-state reset
   state.player = new Player(state.start.x, state.start.y, state.cellSize, 6.5);
   state.visitedCount = 1;
   state.undoStack = [];
@@ -370,7 +379,6 @@ function resizeCanvas() {
   const maxCells = Math.max(state.cols, state.rows);
   state.cellSize = Math.max(6, Math.floor(px / maxCells));
   if (state.player) state.player.setCellSize(state.cellSize);
-  markAllDirty();
 }
 
 // Rendering
@@ -426,13 +434,14 @@ function frame(now) {
     }
   }
 
-  // redraw dirty cells
-  if (state.dirtySet.size) {
-    for (const k of state.dirtySet) {
-      const [x, y] = k.split(",").map(Number);
-      drawCell(x, y);
+  // 🔧 full redraw each frame to avoid yellow trails
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (state.maze) {
+    for (let y = 0; y < state.rows; y++) {
+      for (let x = 0; x < state.cols; x++) {
+        drawCell(x, y);
+      }
     }
-    state.dirtySet.clear();
   }
 
   // fill animations overlay
@@ -459,7 +468,7 @@ function frame(now) {
     ctx.stroke();
   }
 
-  // particles
+  // particles (now definitely on top)
   for (const p of state.particles) {
     p.render(ctx);
   }
@@ -515,14 +524,22 @@ function recomputeDeadendsNear(x, y) {
       )
         cnt++;
     });
-    c.deadEnd = cnt === 1;
+
+    const isStart =
+      state.start && nx === state.start.x && ny === state.start.y;
+    const isEnd = state.end && nx === state.end.x && ny === state.end.y;
+    c.deadEnd = cnt === 1 && !isStart && !isEnd;
+
     markDirty(nx, ny);
   }
 }
 
-function spawnParticles(cx, cy, count = 8) {
+// spawn particles at cell center in pixels
+function spawnParticles(cellX, cellY, count = 8) {
+  const px = (cellX + 0.5) * state.cellSize;
+  const py = (cellY + 0.5) * state.cellSize;
   for (let i = 0; i < count; i++) {
-    const p = new Particle(cx, cy, state.cellSize);
+    const p = new Particle(px, py, state.cellSize);
     state.particles.push(p);
   }
 }
@@ -598,7 +615,7 @@ function attemptMove(dx, dy) {
     const bonus = Math.round(10 * preset);
     state.score += bonus;
     cell.deadEnd = false;
-    spawnParticles(nx + 0.5, ny + 0.5, 12);
+    spawnParticles(nx, ny, 12);
     playBeep(880, 0.08);
   }
 
@@ -676,6 +693,41 @@ function checkCompletion() {
       generateMazeIterative();
     });
   }
+}
+
+// 🔄 Reset current maze layout instead of generating a new one
+function resetCurrentMaze() {
+  if (!state.maze) return;
+
+  // clear dynamic per-cell state
+  for (let y = 0; y < state.rows; y++) {
+    for (let x = 0; x < state.cols; x++) {
+      const cell = state.maze[y][x];
+      cell.filled = false;
+      cell.deadEnd = false;
+    }
+  }
+
+  // recompute dead-ends + originalPathCount
+  recomputeAllDeadEnds();
+
+  // reset run-state
+  state.player = new Player(state.start.x, state.start.y, state.cellSize, 6.5);
+  state.visitedCount = 1;
+  state.undoStack = [];
+  state.animations = [];
+  state.particles = [];
+  state.hintPath = null;
+  state.score = 0;
+
+  state.startTime = Date.now();
+  state.pausedElapsed = 0;
+  if (state.timerTick) clearInterval(state.timerTick);
+  state.timerTick = setInterval(updateTimer, 250);
+
+  undoBtn.disabled = true;
+  markAllDirty();
+  updateHUD();
 }
 
 // Hint (A*)
@@ -894,9 +946,10 @@ regenBtn.addEventListener("click", () => {
   });
 });
 
+// 🔁 Reset now keeps the same maze layout
 resetBtn.addEventListener("click", () => {
   withViewTransition(() => {
-    generateMazeIterative();
+    resetCurrentMaze();
   });
 });
 
@@ -936,7 +989,10 @@ function init() {
   generateMazeIterative();
 }
 
-window.addEventListener("resize", resizeCanvas);
+window.addEventListener("resize", () => {
+  resizeCanvas();
+  markAllDirty();
+});
 
 init();
 
