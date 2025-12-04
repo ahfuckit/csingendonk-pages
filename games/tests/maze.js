@@ -29,14 +29,14 @@ let ctx =
 const astarWorker =
   typeof Worker !== "undefined"
     ? new Worker(new URL("./astar-worker.js", import.meta.url), {
-        type: "module"
+        type: "module",
       })
     : null;
 
 const bfsWorker =
   typeof Worker !== "undefined"
     ? new Worker(new URL("./bfs-worker.js", import.meta.url), {
-        type: "module"
+        type: "module",
       })
     : null;
 
@@ -99,7 +99,7 @@ const state = {
   particles: [], // Particle objects auto-removed
   dirtySet: new Set(), // "x,y" strings
   hintPath: null,
-  hintTimeout: null
+  hintTimeout: null,
 };
 
 highEl.textContent = state.highscore;
@@ -244,7 +244,7 @@ function generateMazeIterative() {
       easy: { shuffle: 0.25, extra: 0.02, deadBoost: 0.9 },
       normal: { shuffle: 0.45, extra: 0.04, deadBoost: 1.0 },
       hard: { shuffle: 0.65, extra: 0.06, deadBoost: 1.2 },
-      cruel: { shuffle: 0.85, extra: 0.08, deadBoost: 1.4 }
+      cruel: { shuffle: 0.85, extra: 0.08, deadBoost: 1.4 },
     }[diffSel.value] || { shuffle: 0.45, extra: 0.04, deadBoost: 1.0 };
 
   // stack-based DFS carve
@@ -254,7 +254,7 @@ function generateMazeIterative() {
       [2, 0],
       [-2, 0],
       [0, 2],
-      [0, -2]
+      [0, -2],
     ];
     // shuffle
     for (let i = dirs.length - 1; i > 0; i--) {
@@ -306,7 +306,7 @@ function generateMazeIterative() {
           [1, 0],
           [-1, 0],
           [0, 1],
-          [0, -1]
+          [0, -1],
         ].forEach(([dx, dy]) => {
           const nx = x + dx;
           const ny = y + dy;
@@ -488,7 +488,7 @@ function recomputeDeadendsNear(x, y) {
     [2, 0],
     [-2, 0],
     [0, 2],
-    [0, -2]
+    [0, -2],
   ];
   for (const [dx, dy] of coords) {
     const nx = x + dx;
@@ -504,7 +504,7 @@ function recomputeDeadendsNear(x, y) {
       [1, 0],
       [-1, 0],
       [0, 1],
-      [0, -1]
+      [0, -1],
     ].forEach(([ddx, ddy]) => {
       const ax = nx + ddx;
       const ay = ny + ddy;
@@ -593,7 +593,7 @@ function attemptMove(dx, dy) {
         easy: 0.9,
         normal: 1.0,
         hard: 1.2,
-        cruel: 1.4
+        cruel: 1.4,
       }[diffSel.value] || 1.0;
     const bonus = Math.round(10 * preset);
     state.score += bonus;
@@ -610,7 +610,7 @@ function attemptMove(dx, dy) {
       x: fx,
       y: fy,
       start: performance.now(),
-      dur: 170
+      dur: 170,
     });
     recomputeDeadendsNear(fx, fy);
     markDirty(fx, fy);
@@ -631,7 +631,7 @@ function undo() {
       x: last.filled.x,
       y: last.filled.y,
       start: performance.now(),
-      dur: 120
+      dur: 120,
     });
     recomputeDeadendsNear(last.filled.x, last.filled.y);
     markDirty(last.filled.x, last.filled.y);
@@ -689,10 +689,7 @@ if (!astarWorker) {
       const row = new Array(state.cols);
       for (let x = 0; x < state.cols; x++) {
         const cell = state.maze[y][x];
-        row[x] =
-          cell.type === "path" && !cell.filled
-            ? 1
-            : 0;
+        row[x] = cell.type === "path" && !cell.filled ? 1 : 0;
       }
       out.push(row);
     }
@@ -702,7 +699,7 @@ if (!astarWorker) {
       cols: state.cols,
       rows: state.rows,
       start: { x: state.player.gridX, y: state.player.gridY },
-      end: { x: state.end.x, y: state.end.y }
+      end: { x: state.end.x, y: state.end.y },
     });
   });
 
@@ -721,6 +718,7 @@ if (!astarWorker) {
   };
 }
 
+// Dead-end hint (BFS: nearest dead-end from current position)
 if (!bfsWorker) {
   if (deadHintBtn) deadHintBtn.disabled = true;
 } else if (deadHintBtn) {
@@ -737,11 +735,21 @@ if (!bfsWorker) {
         const walkable = cell.type === "path" && !cell.filled;
         row[x] = walkable ? 1 : 0;
 
-        if (walkable && cell.deadEnd) {
+        if (
+          walkable &&
+          cell.deadEnd &&
+          !(x === state.player.gridX && y === state.player.gridY)
+        ) {
           deadEnds.push([x, y]);
         }
       }
       grid.push(row);
+    }
+
+    if (deadEnds.length === 0) {
+      deadHintBtn.disabled = false;
+      console.log("No reachable dead-ends from this state.");
+      return;
     }
 
     bfsWorker.postMessage({
@@ -750,7 +758,7 @@ if (!bfsWorker) {
       cols: state.cols,
       rows: state.rows,
       start: { x: state.player.gridX, y: state.player.gridY },
-      deadEnds
+      deadEnds,
     });
   });
 
@@ -759,11 +767,11 @@ if (!bfsWorker) {
     const { cmd, path } = e.data || {};
     if (cmd !== "result") return;
 
-    if (!path) {
-      // No reachable dead-end from current position
+    if (!path || path.length < 2) {
+      // No useful path (either null or trivial)
       state.hintPath = null;
       markAllDirty();
-      console.log("No reachable dead-end from here.");
+      console.log("Dead-end is current cell or trivial step; no hint drawn.");
       return;
     }
 
@@ -846,7 +854,7 @@ canvas.addEventListener("pointermove", (ev) => {
       up: [0, -1],
       down: [0, 1],
       left: [-1, 0],
-      right: [1, 0]
+      right: [1, 0],
     };
     const d = map[dir];
     attemptMove(d[0], d[1]);
@@ -937,7 +945,3 @@ window.__MAZE_STATE = state;
 window.__REGEN = () => {
   regenBtn.click();
 };
-
-
-
-
