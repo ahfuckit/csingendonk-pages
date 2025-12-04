@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Maze — A* Worker, Smooth Movement, Animations</title>
+  <title>Maze</title>
   <link rel="stylesheet" href="./maze.css" />
 </head>
 <body>
@@ -26,16 +26,17 @@
         <option value="cruel">Cruel</option>
       </select>
 
-      <button id="regen" type="button">Regenerate</button>
-      <button id="reset" type="button">Reset</button>
-      <button id="undo" type="button" disabled>Undo</button>
+<button id="regen" type="button">Regenerate</button>
+<button id="reset" type="button">Reset</button>
+<button id="undo" type="button" disabled>Undo</button>
 
-      <label class="inline">
-        <input id="rev" type="checkbox">
-        Unlock 🔙 Travel
-      </label>
+<label class="inline">
+  <input id="rev" type="checkbox">
+  Unlock 🔙 Travel
+</label>
 
-      <button id="hint" type="button">Hint (A*)</button>
+<button id="hint" type="button">Exit Hint (A*)</button>
+<button id="deadHint" type="button">Bonus Hint (BFS)</button>
       <button id="coachBtn" type="button">How</button>
 
       <small class="note">
@@ -78,3 +79,4 @@
   <script type="module" src="./maze.js"></script>
 </body>
 </html>
+
