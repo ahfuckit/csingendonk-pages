@@ -25,20 +25,33 @@ let ctx =
   canvas.getContext("2d", { alpha: false }) ||
   canvas.getContext("2d");
 
-// Worker (module worker modern pattern)
-const astarWorker =
-  typeof Worker !== "undefined"
-    ? new Worker(new URL("./astar-worker.js", import.meta.url), {
-        type: "module",
-      })
-    : null;
+if (!ctx) {
+  throw new Error("Unable to acquire 2D canvas context");
+}
 
-const bfsWorker =
-  typeof Worker !== "undefined"
-    ? new Worker(new URL("./bfs-worker.js", import.meta.url), {
-        type: "module",
-      })
-    : null;
+// Worker (module worker modern pattern) - safe creation
+let astarWorker = null;
+let bfsWorker = null;
+
+if (typeof Worker !== "undefined") {
+  try {
+    astarWorker = new Worker(new URL("./astar-worker.js", import.meta.url), {
+      type: "module",
+    });
+  } catch (err) {
+    console.warn("A* worker could not be created; disabling hints.", err);
+    astarWorker = null;
+  }
+
+  try {
+    bfsWorker = new Worker(new URL("./bfs-worker.js", import.meta.url), {
+      type: "module",
+    });
+  } catch (err) {
+    console.warn("BFS worker could not be created; disabling dead-end hints.", err);
+    bfsWorker = null;
+  }
+}
 
 // Audio (lazy-init for user-gesture friendliness)
 let audioCtx = null;
@@ -50,7 +63,6 @@ function ensureAudioCtx() {
     audioCtx = new Ctor();
   }
   if (audioCtx.state === "suspended") {
-    // Resume on first gesture-triggered call
     audioCtx.resume().catch(() => {});
   }
   return audioCtx;
@@ -95,9 +107,9 @@ const state = {
   startTime: 0,
   pausedElapsed: 0,
   timerTick: null,
-  animations: [], // fill animations
-  particles: [], // Particle objects auto-removed
-  dirtySet: new Set(), // "x,y" strings (now mostly unused)
+  animations: [],
+  particles: [],
+  dirtySet: new Set(), // legacy; still used in a few places
   hintPath: null,
   hintTimeout: null,
 };
@@ -173,7 +185,7 @@ class Player {
   }
 }
 
-// Particles now treat x/y as pixel coordinates, not grid coords
+// Particles treat x/y as pixel coordinates
 class Particle {
   constructor(px, py, cellSize) {
     this.px = px;
@@ -217,8 +229,9 @@ function markDirty(x, y) {
 
 function markAllDirty() {
   state.dirtySet.clear();
-  for (let y = 0; y < state.rows; y++) {
-    for (let x = 0; x < state.cols; x++) {
+  if (!state.maze) return;
+  for (let y = 0; y < state.maze.length; y++) {
+    for (let x = 0; x < state.maze[y].length; x++) {
       markDirty(x, y);
     }
   }
@@ -259,7 +272,6 @@ function recomputeAllDeadEnds() {
 
 // Maze generation
 function generateMazeIterative() {
-  // enforce odd sizes
   if (state.cols % 2 === 0) state.cols++;
   if (state.rows % 2 === 0) state.rows++;
 
@@ -280,7 +292,6 @@ function generateMazeIterative() {
       cruel: { shuffle: 0.85, extra: 0.08, deadBoost: 1.4 },
     }[diffSel.value] || { shuffle: 0.45, extra: 0.04, deadBoost: 1.0 };
 
-  // stack-based DFS carve
   while (stack.length) {
     const [cx, cy] = stack[stack.length - 1];
     let dirs = [
@@ -289,7 +300,6 @@ function generateMazeIterative() {
       [0, 2],
       [0, -2],
     ];
-    // shuffle
     for (let i = dirs.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
@@ -315,7 +325,6 @@ function generateMazeIterative() {
     if (!carved) stack.pop();
   }
 
-  // extra random paths to tune density
   const extra = Math.floor(state.cols * state.rows * preset.extra);
   for (let i = 0; i < extra; i++) {
     const rx = 1 + Math.floor(Math.random() * (state.cols - 2));
@@ -330,10 +339,8 @@ function generateMazeIterative() {
 
   state.maze = maze;
 
-  // compute dead-ends + originalPathCount
   recomputeAllDeadEnds();
 
-  // run-state reset
   state.player = new Player(state.start.x, state.start.y, state.cellSize, 6.5);
   state.visitedCount = 1;
   state.undoStack = [];
@@ -347,6 +354,7 @@ function generateMazeIterative() {
   if (state.timerTick) clearInterval(state.timerTick);
   state.timerTick = setInterval(updateTimer, 250);
 
+  undoBtn.disabled = true;
   markAllDirty();
   updateHUD();
 }
@@ -381,12 +389,16 @@ function resizeCanvas() {
   if (state.player) state.player.setCellSize(state.cellSize);
 }
 
-// Rendering
+// Rendering (guarded)
 function drawCell(x, y) {
+  const row = state.maze?.[y];
+  if (!row) return;
+  const cell = row[x];
+  if (!cell) return;
+
   const cs = state.cellSize;
   const px = x * cs;
   const py = y * cs;
-  const cell = state.maze[y][x];
 
   if (cell.type === "wall" || cell.filled) {
     ctx.fillStyle = "#0b0b0b";
@@ -404,7 +416,7 @@ function drawCell(x, y) {
     }
   }
 
-  if (x === state.end.x && y === state.end.y) {
+  if (state.end && x === state.end.x && y === state.end.y) {
     ctx.fillStyle = "#ff8b00";
     ctx.fillRect(px, py, cs, cs);
   }
@@ -434,11 +446,14 @@ function frame(now) {
     }
   }
 
-  // 🔧 full redraw each frame to avoid yellow trails
+  // full redraw each frame
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
   if (state.maze) {
-    for (let y = 0; y < state.rows; y++) {
-      for (let x = 0; x < state.cols; x++) {
+    const rows = state.maze.length;
+    for (let y = 0; y < rows; y++) {
+      const cols = state.maze[y].length;
+      for (let x = 0; x < cols; x++) {
         drawCell(x, y);
       }
     }
@@ -468,11 +483,12 @@ function frame(now) {
     ctx.stroke();
   }
 
-  // particles (now definitely on top)
+  // particles
   for (const p of state.particles) {
     p.render(ctx);
   }
 
+  // player
   if (state.player) state.player.render(ctx);
 
   requestAnimationFrame(frame);
@@ -683,35 +699,39 @@ function checkCompletion() {
 
     const newW = Math.min(51, state.cols + 2);
     const newH = Math.min(51, state.rows + 2);
-    widthIn.value = newW;
-    heightIn.value = newH;
-    state.cols = newW;
-    state.rows = newH;
 
     withViewTransition(() => {
+      // Prevent mismatch between new dims and old maze for a frame
+      state.maze = null;
+      state.animations = [];
+      state.particles = [];
+      state.hintPath = null;
+
+      state.cols = newW;
+      state.rows = newH;
+      widthIn.value = newW;
+      heightIn.value = newH;
+
       resizeCanvas();
       generateMazeIterative();
     });
   }
 }
 
-// 🔄 Reset current maze layout instead of generating a new one
+// Reset current maze layout instead of generating a new one
 function resetCurrentMaze() {
   if (!state.maze) return;
 
-  // clear dynamic per-cell state
-  for (let y = 0; y < state.rows; y++) {
-    for (let x = 0; x < state.cols; x++) {
-      const cell = state.maze[y][x] != null ? state.maze[y][x] : state.maze[0][0];
+  for (let y = 0; y < state.maze.length; y++) {
+    for (let x = 0; x < state.maze[y].length; x++) {
+      const cell = state.maze[y][x];
       cell.filled = false;
       cell.deadEnd = false;
     }
   }
 
-  // recompute dead-ends + originalPathCount
   recomputeAllDeadEnds();
 
-  // reset run-state
   state.player = new Player(state.start.x, state.start.y, state.cellSize, 6.5);
   state.visitedCount = 1;
   state.undoStack = [];
@@ -732,7 +752,7 @@ function resetCurrentMaze() {
 
 // Hint (A*)
 if (!astarWorker) {
-  hintBtn.disabled = true;
+  if (hintBtn) hintBtn.disabled = true;
 } else {
   hintBtn.addEventListener("click", () => {
     hintBtn.disabled = true;
@@ -820,14 +840,12 @@ if (!bfsWorker) {
     if (cmd !== "result") return;
 
     if (!path || path.length < 2) {
-      // No useful path (either null or trivial)
       state.hintPath = null;
       markAllDirty();
       console.log("Dead-end is current cell or trivial step; no hint drawn.");
       return;
     }
 
-    // Reuse the same render path as A*
     state.hintPath = path;
     if (state.hintTimeout) clearTimeout(state.hintTimeout);
     state.hintTimeout = setTimeout(() => {
@@ -946,7 +964,6 @@ regenBtn.addEventListener("click", () => {
   });
 });
 
-// 🔁 Reset now keeps the same maze layout
 resetBtn.addEventListener("click", () => {
   withViewTransition(() => {
     resetCurrentMaze();
@@ -1001,4 +1018,3 @@ window.__MAZE_STATE = state;
 window.__REGEN = () => {
   regenBtn.click();
 };
-
