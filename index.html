@@ -173,7 +173,7 @@
     };
 
     function navto(where = './') {
-        const to = typeof where == 'String' ? where : './';
+        const to = where.trim != null ? where : './';
         window.location.href = to;
     }
     btns.puzzle?.addEventListener('click', () => navto('./puzzle/index.html'));
