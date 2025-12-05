@@ -702,7 +702,7 @@ function resetCurrentMaze() {
   // clear dynamic per-cell state
   for (let y = 0; y < state.rows; y++) {
     for (let x = 0; x < state.cols; x++) {
-      const cell = state.maze[y][x];
+      const cell = state.maze[y][x] != null ? state.maze[y][x] : state.maze[0][0];
       cell.filled = false;
       cell.deadEnd = false;
     }
@@ -1001,3 +1001,4 @@ window.__MAZE_STATE = state;
 window.__REGEN = () => {
   regenBtn.click();
 };
+
