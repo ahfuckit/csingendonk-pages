@@ -174,7 +174,7 @@
 
     function navto(where = './') {
         const to = typeof where == 'String' ? where : './';
-        window.location.href = ;
+        window.location.href = to;
     }
     btns.puzzle?.addEventListener('click', () => navto('./puzzle/index.html'));
     btns.pong?.addEventListener('click', () => navto('./games/superpong.html'));
