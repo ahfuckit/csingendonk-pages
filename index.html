@@ -1,48 +1,157 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>CSingendonk's Pages</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="author" content="Chris Singendonk" email="https://www.github.com/csingendonk">
+  <title>CS 2025</title>
   <style>
+    :root {
+      --bg-main: #74ebd5;
+      --bg-complement: #ACB6E5;
+      --main-text-color: #333333;
+    }
+
+    /* Base reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     body {
       font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #74ebd5, #ACB6E5);
+      background: linear-gradient(135deg, var(--bg-main), var(--bg-complement));
+      min-height: 100vh;
       display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
+      flex-direction: column;
+      color: var(--main-text-color);
       overflow: hidden;
     }
+
+    header {
+      background: rgba(0, 0, 0, 0.45);
+      color: #fff;
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      backdrop-filter: blur(4px);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      animation: glowText 2s ease-in-out infinite alternate;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    /* Color picker: details + emoji + transparent input overlay */
+    .color-picker-wrapper {
+      position: relative;
+      width: 2.4rem;
+      height: 2.4rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .color-details {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    .color-details > summary {
+      list-style: none;
+      cursor: default;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      margin: 0;
+    }
+
+    .color-details > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .color-label {
+      font-size: 1.6rem;
+      user-select: none;
+      pointer-events: none; /* clicks go to the input overlay */
+    }
+
+    #uic {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      border: none;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      background: transparent;
+    }
+
+    header nav {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
     .container {
       text-align: center;
       animation: fadeInUp 1.2s ease-out;
     }
-    h1 {
-      color: #333;
-      margin-bottom: 3%;
-      font-size: 2.2em;
-      animation: glowText 2s ease-in-out infinite alternate;
+
+    .tagline {
+      margin-bottom: 1.5rem;
+      font-size: 1rem;
+      color: var(--main-text-color);
+      text-shadow: 0 1px 2px rgba(255, 255, 255, 0.4);
     }
 
+    /* Fancy buttons */
     button {
       background-color: #4CAF50;
       border: none;
       color: white;
-      padding: 1.5% 3%;
-      margin: 1%;
-      font-size: 1.1rem;
-      border-radius: 5%;
+      padding: 0.6rem 1.2rem;
+      margin: 0.25rem;
+      font-size: 1rem;
+      border-radius: 999px;
       cursor: pointer;
       transition: all 0.3s ease;
       display: inline-flex;
       align-items: center;
-      gap: 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      gap: 0.5rem;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      white-space: nowrap;
     }
+
     button:hover {
       transform: scale(1.08);
-      box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
     }
 
     #pzbtn {
@@ -51,6 +160,7 @@
     #pzbtn:hover {
       background-color: #45a049;
     }
+
     #pngbtn {
       background-color: #2196F3;
     }
@@ -58,7 +168,6 @@
       background-color: #1976D2;
     }
 
-    /* Mazes summary button */
     #mazes-summary {
       background-color: #9C27B0;
     }
@@ -66,17 +175,138 @@
       background-color: #7B1FA2;
     }
 
+    #mzbtn {
+      background-color: #4CAF50;
+    }
+    #mzbtn:hover {
+      background-color: #45a049;
+    }
+    #modernmzbtn {
+      background-color: #FF9800;
+    }
+    #modernmzbtn:hover {
+      background-color: #F57C00;
+    }
+
     i {
-      font-size: 1.7rem;
+      font-size: 1.2rem;
       transition: transform 0.4s ease;
     }
 
-    /* Icon animations */
     #pzbtn:hover i {
       animation: bounce 0.6s;
     }
     #pngbtn:hover i {
       animation: spin 0.8s linear;
+    }
+
+    /* Mazes dropdown */
+    details {
+      display: inline-block;
+      margin: 0.25rem;
+      position: relative;
+    }
+
+    details[open] #mazes-panel {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    #mazes-panel {
+      position: absolute;
+      top: 110%;
+      left: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.25rem;
+      opacity: 0;
+      transform: translateY(-4px);
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      z-index: 10;
+    }
+
+    #mazes-panel button {
+      width: 100%;
+      justify-content: center;
+      font-size: 0.95rem;
+      padding: 0.5rem 1rem;
+    }
+
+    /* Modal overlay */
+    .modal {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .popup-container {
+      position: absolute;
+      background: #fff;
+      border: 2px solid #3f0;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      width: 90vw;
+      height: 90vh;
+      max-width: 90vw;
+      max-height: 90vh;
+      resize: both;
+      overflow: hidden;
+    }
+
+    .popup-container.centered {
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .popup-header {
+      background: #3f0;
+      color: #fff;
+      padding: 0.5rem 0.75rem;
+      cursor: move;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.95rem;
+    }
+
+    .popup-header .title {
+      font-size: 1rem;
+    }
+
+    .popup-header .close {
+      background: #999;
+      border: 2px groove #900fff;
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .popup-body {
+      width: 100%;
+      height: calc(100% - 40px);
+      overflow: hidden;
+    }
+
+    .popup-body iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
     }
 
     /* Keyframes */
@@ -97,100 +327,451 @@
       to { text-shadow: 0 0 10px #fff, 0 0 20px #ACB6E5; }
     }
 
-    /* Mazes dropdown container */
-    details {
-      display: inline-block;
-      margin: 1%;
-    }
-
-    details[open] #mazes-panel {
-      opacity: 1;
-      transform: translateY(0);
-      pointer-events: auto;
-    }
-
-    #mazes-panel {
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      margin-top: 0.5rem;
-      gap: 0.4rem;
-      opacity: 0;
-      transform: translateY(-4px);
-      pointer-events: none;
-      transition: opacity 0.2s ease, transform 0.2s ease;
-    }
-
-    /* Make nested buttons full-width inside the dropdown */
-    #mazes-panel button {
-      width: 100%;
-      justify-content: center;
-      font-size: 1rem;
-      padding: 0.6rem 1.2rem;
-    }
-
-    /* Slightly different colors for the two maze versions */
-    #mzbtn {
-      background-color: #4CAF50;
-    }
-    #mzbtn:hover {
-      background-color: #45a049;
-    }
-    #modernmzbtn {
-      background-color: #FF9800;
-    }
-    #modernmzbtn:hover {
-      background-color: #F57C00;
+    @media (max-width: 720px) {
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+      .header-right {
+        width: 100%;
+        justify-content: space-between;
+      }
+      header nav {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>CSingendonk's Pages</h1>
-    <button id="pzbtn"><i>🧩</i> Puzzle</button>
-    <button id="pngbtn"><i>🏓</i> Super Pong</button>
-    <details id="mazes">
-      <summary>
-        <button id="mazes-summary" type="button">
-          <i>🧭</i> Mazes
-        </button>
-      </summary>
-      <div id="mazes-panel">
-        <button id="mzbtn" type="button"><i>🪤</i> Classic Maze</button>
-        <button id="modernmzbtn" type="button"><i>🗺️</i> Modern Maze</button>
+  <header>
+    <h1>CS 2025</h1>
+    <div class="header-right">
+      <!-- details container kept, emoji in front of transparent input -->
+      <div class="color-picker-wrapper">
+        <details class="color-details" open>
+          <summary>
+            <label for="uic" class="color-label">🎨</label>
+          </summary>
+        </details>
+        <input type="color" id="uic" name="uic" value="#74ebd5" />
       </div>
-    </details>
+
+      <nav>
+        <button id="pzbtn" type="button"><i>🧩</i> Puzzle</button>
+        <button id="pngbtn" type="button"><i>🏓</i> Super Pong</button>
+        <details id="mazes">
+          <summary>
+            <button id="mazes-summary" type="button">
+              <i>🧭</i> Mazes
+            </button>
+          </summary>
+          <div id="mazes-panel">
+            <button id="mzbtn" type="button"><i>🪤</i> Classic Maze</button>
+            <button id="modernmzbtn" type="button"><i>🗺️</i> Modern Maze</button>
+          </div>
+        </details>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <p class="tagline">
+        Choose a game from the top bar. The 🎨 picker live-tweaks the color theme with contrast-aware text.
+      </p>
+    </div>
+  </main>
+
+  <!-- Modal overlay -->
+  <div class="modal" id="modal">
+    <div class="popup-container centered" id="popup-container">
+      <div class="popup-header" id="popup-header">
+        <span class="title" id="popup-title">Popup</span>
+        <button class="close" id="popup-close">X</button>
+      </div>
+      <div class="popup-body" id="popup-body">
+        <!-- Popup content injected here -->
+      </div>
+    </div>
   </div>
 
   <script>
-    const btns = {
-      puzzle: document.getElementById('pzbtn'),
-      pong: document.getElementById('pngbtn'),
-      mazeClassic: document.getElementById('mzbtn'),
-      mazeModern: document.getElementById('modernmzbtn'),
-      mazesDetails: document.getElementById('mazes'),
-      mazesSummaryBtn: document.getElementById('mazes-summary')
-    };
+    // ---------- Draggable Modal + Popup Management ----------
 
-    function navto(where = './') {
-        const to = where.trim != null ? where : './';
-        window.location.href = to;
+    const popupContainer = document.getElementById('popup-container');
+    const popupHeader = document.getElementById('popup-header');
+    const modal = document.getElementById('modal');
+    const popupBody = document.getElementById('popup-body');
+    const popupTitle = document.getElementById('popup-title');
+    const popupClose = document.getElementById('popup-close');
+
+    let offsetX = 0,
+        offsetY = 0,
+        isDragging = false;
+
+    popupHeader.addEventListener('mousedown', (e) => {
+      const rect = popupContainer.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      isDragging = false;
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+
+    function onMouseMove(e) {
+      if (!isDragging && e.buttons === 1) {
+        if (popupContainer.classList.contains('centered')) {
+          popupContainer.style.transform = 'none';
+          popupContainer.classList.remove('centered');
+        }
+        isDragging = true;
+      }
+      if (!isDragging) return;
+
+      let newLeft = e.clientX - offsetX;
+      let newTop = e.clientY - offsetY;
+      const containerWidth = popupContainer.offsetWidth;
+      const containerHeight = popupContainer.offsetHeight;
+      const maxLeft = window.innerWidth - containerWidth;
+      const maxTop = window.innerHeight - containerHeight;
+
+      newLeft = Math.min(Math.max(newLeft, 0), maxLeft);
+      newTop = Math.min(Math.max(newTop, 0), maxTop);
+
+      popupContainer.style.left = newLeft + 'px';
+      popupContainer.style.top = newTop + 'px';
     }
-    btns.puzzle?.addEventListener('click', () => navto('./puzzle/index.html'));
-    btns.pong?.addEventListener('click', () => navto('./games/superpong.html'));
-    btns.mazeClassic?.addEventListener('click', () => navto('./games/maze.html'));
-    btns.mazeModern?.addEventListener('click', () => navto('./games/tests/index.html'));
 
-    if (btns.mazesSummaryBtn && btns.mazesDetails) {
-      btns.mazesSummaryBtn.addEventListener('click', (ev) => {
-        btns.mazesDetails.open = !btns.mazesDetails.open;
+    function onMouseUp() {
+      isDragging = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    }
+
+    function openPopup(title, content, type = 'iframe') {
+      popupTitle.textContent = title;
+
+      if (type === 'iframe') {
+        popupBody.innerHTML =
+          '<iframe src="' + content + '" style="width:100%;height:100%;border:0;"></iframe>';
+      } else if (type === 'markdown') {
+        fetch(content)
+          .then((response) => response.text())
+          .then((md) => {
+            if (typeof marked !== 'undefined') {
+              popupBody.innerHTML = marked.parse(md);
+            } else {
+              popupBody.innerHTML = '<pre style="white-space:pre-wrap;">' +
+                md.replace(/</g, '&lt;') +
+                '</pre>';
+            }
+          })
+          .catch(() => {
+            popupBody.innerHTML = '<p>Error loading content</p>';
+          });
+      }
+
+      popupContainer.classList.add('centered');
+      popupContainer.style.width = '90vw';
+      popupContainer.style.height = '90vh';
+      popupContainer.style.left = '';
+      popupContainer.style.top = '';
+
+      modal.classList.add('active');
+    }
+
+    popupClose.addEventListener('click', () => {
+      modal.classList.remove('active');
+    });
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('active');
+      }
+    });
+
+    // ---------- Button Wiring ----------
+
+    const btnPuzzle = document.getElementById('pzbtn');
+    const btnPong = document.getElementById('pngbtn');
+    const btnMazeClassic = document.getElementById('mzbtn');
+    const btnMazeModern = document.getElementById('modernmzbtn');
+    const mazesDetails = document.getElementById('mazes');
+    const mazesSummaryBtn = document.getElementById('mazes-summary');
+
+    if (btnPuzzle) {
+      btnPuzzle.addEventListener('click', () => {
+        openPopup('Puzzle', './puzzle/index.html', 'iframe');
       });
-      btns.mazesDetails.addEventListener('focusout', (ev) => {
-        if (!btns.mazesDetails.contains(ev.relatedTarget)) {
-          btns.mazesDetails.open = false;
+    }
+
+    if (btnPong) {
+      btnPong.addEventListener('click', () => {
+        openPopup('Super Pong', './games/superpong.html', 'iframe');
+      });
+    }
+
+    if (btnMazeClassic) {
+      btnMazeClassic.addEventListener('click', () => {
+        openPopup('Classic Maze', './games/maze.html', 'iframe');
+      });
+    }
+
+    if (btnMazeModern) {
+      btnMazeModern.addEventListener('click', () => {
+        openPopup('Modern Maze', './games/tests/index.html', 'iframe');
+      });
+    }
+
+    if (mazesDetails && mazesSummaryBtn) {
+      mazesSummaryBtn.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        mazesDetails.open = !mazesDetails.open;
+      });
+
+      mazesDetails.addEventListener('focusout', (ev) => {
+        if (!mazesDetails.contains(ev.relatedTarget)) {
+          mazesDetails.open = false;
         }
       });
     }
+
+    // ---------- Debounce Utility ----------
+    function debounce(func, wait, immediate) {
+      let timeout;
+      return function () {
+        const context = this,
+              args = arguments;
+        const later = function () {
+          timeout = null;
+          if (!immediate) func.apply(context, args);
+        };
+        const callNow = immediate && !timeout;
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+        if (callNow) func.apply(context, args);
+      };
+    }
+
+    // ---------- Color Utilities Module ----------
+    const ColorUtils = {
+      rgbToHex: function (r, g, b) {
+        return (
+          "#" +
+          [r, g, b]
+            .map((x) => {
+              const hex = x.toString(16);
+              return hex.length === 1 ? "0" + hex : hex;
+            })
+            .join("")
+        );
+      },
+
+      hexToRgb: function (hex) {
+        hex = hex.replace("#", "");
+        if (hex.length === 3) {
+          hex = hex
+            .split("")
+            .map((c) => c + c)
+            .join("");
+        }
+        const num = parseInt(hex, 16);
+        return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+      },
+
+      rgbToHsl: function (r, g, b) {
+        r /= 255;
+        g /= 255;
+        b /= 255;
+        const max = Math.max(r, g, b),
+              min = Math.min(r, g, b);
+        let h, s;
+        let l = (max + min) / 2;
+        if (max === min) {
+          h = s = 0;
+        } else {
+          const d = max - min;
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          switch (max) {
+            case r:
+              h = (g - b) / d + (g < b ? 6 : 0);
+              break;
+            case g:
+              h = (b - r) / d + 2;
+              break;
+            case b:
+              h = (r - g) / d + 4;
+              break;
+          }
+          h *= 60;
+        }
+        return [h, s * 100, l * 100];
+      },
+
+      hslToRgb: function (h, s, l) {
+        s /= 100;
+        l /= 100;
+        const c = (1 - Math.abs(2 * l - 1)) * s;
+        const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+        const m = l - c / 2;
+        let r, g, b;
+        if (h < 60) {
+          r = c; g = x; b = 0;
+        } else if (h < 120) {
+          r = x; g = c; b = 0;
+        } else if (h < 180) {
+          r = 0; g = c; b = x;
+        } else if (h < 240) {
+          r = 0; g = x; b = c;
+        } else if (h < 300) {
+          r = x; g = 0; b = c;
+        } else {
+          r = c; g = 0; b = x;
+        }
+        r = Math.round((r + m) * 255);
+        g = Math.round((g + m) * 255);
+        b = Math.round((b + m) * 255);
+        return [r, g, b];
+      },
+
+      getLuminance: function (hexColor) {
+        const [r, g, b] = this.hexToRgb(hexColor);
+        const [R, G, B] = [r, g, b].map((v) => {
+          v /= 255;
+          return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        });
+        return 0.2126 * R + 0.7152 * G + 0.0722 * B;
+      },
+
+      getContrastRatio: function (hex1, hex2) {
+        const L1 = this.getLuminance(hex1);
+        const L2 = this.getLuminance(hex2);
+        const brighter = Math.max(L1, L2);
+        const darker = Math.min(L1, L2);
+        return (brighter + 0.05) / (darker + 0.05);
+      },
+
+      getComplementaryColor: function (hexColor) {
+        const [r, g, b] = this.hexToRgb(hexColor);
+        let [h, s, l] = this.rgbToHsl(r, g, b);
+        h = (h + 180) % 360;
+        const [newR, newG, newB] = this.hslToRgb(h, s, l);
+        return this.rgbToHex(newR, newG, newB);
+      },
+
+      getBrightnessContrastCandidate: function (hexColor) {
+        const [r, g, b] = this.hexToRgb(hexColor);
+        let [h, s, l] = this.rgbToHsl(r, g, b);
+        l = this.getLuminance(hexColor) > 0.5 ? Math.max(0, l - 40) : Math.min(100, l + 40);
+        return this.rgbToHex(...this.hslToRgb(h, s, l));
+      },
+
+      adjustContrast: function (candidateHex, bgHex, threshold) {
+        let [h, s, l] = this.rgbToHsl(...this.hexToRgb(candidateHex));
+        let contrast = this.getContrastRatio(bgHex, candidateHex);
+        let iterations = 0;
+        const bgLuminance = this.getLuminance(bgHex);
+        while (contrast < threshold && iterations < 20) {
+          l = bgLuminance > 0.5 ? Math.max(0, l - 5) : Math.min(100, l + 5);
+          candidateHex = this.rgbToHex(...this.hslToRgb(h, s, l));
+          contrast = this.getContrastRatio(bgHex, candidateHex);
+          iterations++;
+        }
+        return candidateHex;
+      },
+
+      parseColor: function (input) {
+        input = (input || "").trim();
+        if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(input)) {
+          return input;
+        }
+        if (/^rgba?\(/i.test(input)) {
+          const rgbValues = input.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/i);
+          if (rgbValues) {
+            const r = parseInt(rgbValues[1], 10);
+            const g = parseInt(rgbValues[2], 10);
+            const b = parseInt(rgbValues[3], 10);
+            return this.rgbToHex(r, g, b);
+          }
+        }
+        if (/^hsl\(/i.test(input)) {
+          const hslValues = input.match(/hsl\(\s*(\d+)[,\s]+(\d+)%[,\s]+(\d+)%/i);
+          if (hslValues) {
+            const h = parseInt(hslValues[1], 10);
+            const s = parseInt(hslValues[2], 10);
+            const l = parseInt(hslValues[3], 10);
+            const [r, g, b] = this.hslToRgb(h, s, l);
+            return this.rgbToHex(r, g, b);
+          }
+        }
+        console.error("Could not parse color:", input);
+        return null;
+      }
+    };
+
+    // ---------- Main Color Update Function ----------
+    function updateColors(options = {}) {
+      const { contrastMethod = "complementary", contrastThreshold = 4.5 } = options;
+      const picker = document.querySelector("#uic");
+      if (!picker) return;
+
+      const raw = picker.value || "#74ebd5";
+      let hexColor = ColorUtils.parseColor(raw);
+      if (!hexColor) {
+        hexColor = "#74ebd5";
+      }
+
+      const complement = ColorUtils.getComplementaryColor(hexColor);
+
+      // drive CSS variables so multiple elements can react
+      const root = document.documentElement;
+      root.style.setProperty("--bg-main", hexColor);
+      root.style.setProperty("--bg-complement", complement);
+
+      let candidateTextColor =
+        contrastMethod === "brightness"
+          ? ColorUtils.getBrightnessContrastCandidate(hexColor)
+          : ColorUtils.getComplementaryColor(hexColor);
+
+      // ensure contrast vs both gradient endpoints
+      candidateTextColor = ColorUtils.adjustContrast(
+        candidateTextColor,
+        hexColor,
+        contrastThreshold
+      );
+      candidateTextColor = ColorUtils.adjustContrast(
+        candidateTextColor,
+        complement,
+        contrastThreshold
+      );
+
+      root.style.setProperty("--main-text-color", candidateTextColor);
+
+      // For debugging / contrast sanity:
+      // console.log(
+      //   "BG main:", hexColor,
+      //   "BG complement:", complement,
+      //   "Text:", candidateTextColor,
+      //   "Contrast(main):", ColorUtils.getContrastRatio(hexColor, candidateTextColor),
+      //   "Contrast(compl):", ColorUtils.getContrastRatio(complement, candidateTextColor)
+      // );
+    }
+
+    const debouncedUpdate = debounce(
+      () => updateColors({ contrastMethod: "complementary", contrastThreshold: 4.5 }),
+      30  // reduced timeout for more realtime feedback
+    );
+
+    const colorInput = document.querySelector("#uic");
+    if (colorInput) {
+      colorInput.addEventListener("input", debouncedUpdate);
+    }
+
+    // Initial theme setup
+    updateColors({ contrastMethod: "complementary", contrastThreshold: 4.5 });
   </script>
 </body>
 </html>
