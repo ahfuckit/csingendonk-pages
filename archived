@@ -1,0 +1,547 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="author" content="Chris Singendonk" email="https://www.github.com/csingendonk">
+  <title>CS</title>
+  <style>
+    /* Base reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: sans-serif;
+      background: #f0f0f0;
+    }
+    header {
+      background: #222;
+      color: #fff;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header nav button {
+      background: transparent;
+      border: 2px solid transparent;
+      color: #fff;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      margin-left: 0.5rem;
+    }
+    header nav button:hover {
+      background: rgba(255,255,255,0.2);
+      border-color: #01090ff9;
+    }
+    main {
+      padding: 2rem;
+    }
+    /* Modal overlay: full-screen with centered content */
+    .modal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal.active {
+      display: flex;
+    }
+    /* Popup container – now set to 90vw by 90vh */
+    .popup-container {
+      position: fixed;
+      background: #fff;
+      border: 2px solid #3f0;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      width: 90vw;
+      height: 90vh;
+      max-width: 90vw;
+      max-height: 90vh;
+      resize: both;
+      overflow: hidden;
+    }
+    /* Center the container initially */
+    .centered {
+      left: 100vw;
+      top: 100vh;
+      transform: translate(-94.5vw, -95vh);
+    }
+    /* Header used for dragging */
+    .popup-header {
+      background: #3f0;
+      color: #fff;
+      padding: 0.5rem;
+      cursor: move;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .popup-header .title {
+      font-size: 1.2rem;
+      color: #fff;
+    }
+    .popup-header .close {
+      background: #999;
+      border: 2px groove #900fff;
+      color: #fff;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+    .popup-body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    .popup-body iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>CS</h1>
+
+    <details open style="display:contents;position: relative;overflow: clip;height: 0px;font-size:0px;">
+        <summary style="font-size:0px;marker: none; marker-mid: none; display:flex;position:relative;">
+          <label for="uic" style=" font-size:1.5rem;display:inline-block;">🎨</label>
+        </summary>
+    </details>
+    <input type="color" style="display:contents;" name="uic" id="uic">
+    <nav>
+      <button id="puzzle-btn">Puzzle</button>
+      <button id="dice-btn">Dice</button>
+      <button id="help-btn">Help</button>
+      <button id="about-btn">About</button>
+    </nav>
+  </header>
+  <main>
+    <p>Welcome to CS 2025. Choose an option above.</p>
+  </main>
+  
+  <!-- Modal overlay -->
+<div class="modal" id="modal">
+  <div class="popup-container centered" id="popup-container">
+    <div class="popup-header" id="popup-header">
+      <span class="title" id="popup-title">GTFO</span>
+      <button class="close" id="popup-close">X</button>
+    </div>
+    <div class="popup-body" id="popup-body">
+      <!-- Popup content goes here -->
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Suggested CSS improvements for layout */
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal.active {
+    display: flex;
+  }
+  .popup-container {
+    position: absolute;
+    background: #fff;
+    border-radius: 4px;
+    /* Default width/height can be overridden on open */
+    width: 90vw;
+    height: 90vh;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    overflow: hidden;
+  }
+  .popup-container.centered {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .popup-header {
+    background: #333;
+    color: #fff;
+    padding: 10px;
+    cursor: move;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .popup-body {
+    padding: 15px;
+    overflow: auto; /* Allows scrolling if content overflows */
+    height: calc(100% - 50px); /* Adjust based on header height */
+  }
+</style>
+
+<script>
+  // Draggable functionality
+  const popupContainer = document.getElementById('popup-container');
+  const popupHeader = document.getElementById('popup-header');
+  let offsetX, offsetY, isDragging = false;
+
+  popupHeader.addEventListener('mousedown', (e) => {
+    isDragging = false;
+    const rect = popupContainer.getBoundingClientRect();
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  });
+
+  function onMouseMove(e) {
+    // Start dragging if left button is held down
+    if (!isDragging && e.buttons === 1) {
+      if (popupContainer.classList.contains('centered')) {
+        popupContainer.style.transform = 'none';
+        popupContainer.classList.remove('centered');
+      }
+      isDragging = true;
+    }
+    if (!isDragging) return;
+
+    // Calculate the new position
+    let newLeft = e.clientX - offsetX;
+    let newTop = e.clientY - offsetY;
+    const containerWidth = popupContainer.offsetWidth;
+    const containerHeight = popupContainer.offsetHeight;
+    const maxLeft = window.innerWidth - containerWidth;
+    const maxTop = window.innerHeight - containerHeight;
+    
+    // Clamp newLeft and newTop within the viewport
+    newLeft = Math.min(Math.max(newLeft, 0), maxLeft);
+    newTop = Math.min(Math.max(newTop, 0), maxTop);
+
+    popupContainer.style.left = newLeft + 'px';
+    popupContainer.style.top = newTop + 'px';
+  }
+
+  function onMouseUp() {
+    isDragging = false;
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+  }
+
+  // Modal and Content Management
+  const modal = document.getElementById('modal');
+  const popupBody = document.getElementById('popup-body');
+  const popupTitle = document.getElementById('popup-title');
+  const popupClose = document.getElementById('popup-close');
+
+  function openPopup(title, content, type = 'iframe') {
+    popupTitle.textContent = title;
+    if (type === 'iframe') {
+      popupBody.innerHTML = `<iframe src="${content}" style="width:100%; height:100%; border:0;"></iframe>`;
+    } else if (type === 'markdown') {
+      // Load markdown content as needed...
+      fetch(content)
+        .then(response => response.text())
+        .then(md => {
+          if (typeof marked !== 'undefined') {
+            popupBody.innerHTML = marked.parse(md);
+          } else {
+            popupBody.innerHTML = `<div>${md}</div>`;
+          }
+        })
+        .catch(() => { popupBody.innerHTML = '<p>Error loading content</p>'; });
+    }
+    // Reset container size and center it
+    popupContainer.classList.add('centered');
+    popupContainer.style.width = '90vw';
+    popupContainer.style.height = '90vh';
+    // Reset position (will be centered by CSS)
+    popupContainer.style.left = '';
+    popupContainer.style.top = '';
+    modal.classList.add('active');
+  }
+
+  popupClose.addEventListener('click', () => {
+    modal.classList.remove('active');
+  });
+
+  // Close modal when clicking outside of the popup
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.classList.remove('active');
+    }
+  });
+    
+    // Button event listeners
+    document.getElementById('puzzle-btn').addEventListener('click', () => {
+      openPopup('Puzzle', 'https://csingendonk.github.io/htmlpanels/sliderPuzzle/puzzle.html', 'iframe');
+    });
+    
+    document.getElementById('dice-btn').addEventListener('click', () => {
+      openPopup('Dice', 'https://csingendonk.github.io/htmlpanels/diceroller/index.html', 'iframe');
+    });
+    
+    document.getElementById('help-btn').addEventListener('click', () => {
+      openPopup('Help', 'https://csingendonk.github.io/htmlpanels/sliderPuzzle/misc/help.md', 'markdown');
+    });
+    
+    document.getElementById('about-btn').addEventListener('click', () => {
+      openPopup('About', 'https://csingendonk.github.io/htmlpanels/sliderPuzzle/misc/about.md', 'markdown');
+    });
+(function () {
+  // ---------- Debounce Utility ----------
+  function debounce(func, wait, immediate) {
+    let timeout;
+    return function () {
+      const context = this,
+        args = arguments;
+      const later = function () {
+        timeout = null;
+        if (!immediate) func.apply(context, args);
+      };
+      const callNow = immediate && !timeout;
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+      if (callNow) func.apply(context, args);
+    };
+  }
+
+  // ---------- Color Utilities Module ----------
+  const ColorUtils = {
+    // Convert RGB values to HEX.
+    rgbToHex: function (r, g, b) {
+      return (
+        "#" +
+        [r, g, b]
+          .map((x) => {
+            const hex = x.toString(16);
+            return hex.length === 1 ? "0" + hex : hex;
+          })
+          .join("")
+      );
+    },
+
+    // Convert HEX to RGB array.
+    hexToRgb: function (hex) {
+      hex = hex.replace("#", "");
+      if (hex.length === 3) {
+        hex = hex
+          .split("")
+          .map((c) => c + c)
+          .join("");
+      }
+      const num = parseInt(hex, 16);
+      return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+    },
+
+    // Convert RGB to HSL.
+    // Returns [h, s, l] where h is in [0, 360) and s, l are in [0, 100]
+    rgbToHsl: function (r, g, b) {
+      r /= 255;
+      g /= 255;
+      b /= 255;
+      const max = Math.max(r, g, b),
+        min = Math.min(r, g, b);
+      let h, s, l = (max + min) / 2;
+      if (max === min) {
+        h = s = 0; // achromatic
+      } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r:
+            h = (g - b) / d + (g < b ? 6 : 0);
+            break;
+          case g:
+            h = (b - r) / d + 2;
+            break;
+          case b:
+            h = (r - g) / d + 4;
+            break;
+        }
+        h *= 60;
+      }
+      return [h, s * 100, l * 100];
+    },
+
+    // Convert HSL to RGB array.
+    hslToRgb: function (h, s, l) {
+      s /= 100;
+      l /= 100;
+      const c = (1 - Math.abs(2 * l - 1)) * s;
+      const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+      const m = l - c / 2;
+      let r, g, b;
+      if (h < 60) {
+        r = c;
+        g = x;
+        b = 0;
+      } else if (h < 120) {
+        r = x;
+        g = c;
+        b = 0;
+      } else if (h < 180) {
+        r = 0;
+        g = c;
+        b = x;
+      } else if (h < 240) {
+        r = 0;
+        g = x;
+        b = c;
+      } else if (h < 300) {
+        r = x;
+        g = 0;
+        b = c;
+      } else {
+        r = c;
+        g = 0;
+        b = x;
+      }
+      r = Math.round((r + m) * 255);
+      g = Math.round((g + m) * 255);
+      b = Math.round((b + m) * 255);
+      return [r, g, b];
+    },
+
+    // Calculate relative luminance of a HEX color.
+    getLuminance: function (hexColor) {
+      const [r, g, b] = this.hexToRgb(hexColor);
+      const [R, G, B] = [r, g, b].map((v) => {
+        v /= 255;
+        return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+      });
+      return 0.2126 * R + 0.7152 * G + 0.0722 * B;
+    },
+
+    // Calculate contrast ratio between two HEX colors.
+    getContrastRatio: function (hex1, hex2) {
+      const L1 = this.getLuminance(hex1);
+      const L2 = this.getLuminance(hex2);
+      const brighter = Math.max(L1, L2);
+      const darker = Math.min(L1, L2);
+      return (brighter + 0.05) / (darker + 0.05);
+    },
+
+    // Return the complementary color by rotating the hue 180°.
+    getComplementaryColor: function (hexColor) {
+      const [r, g, b] = this.hexToRgb(hexColor);
+      let [h, s, l] = this.rgbToHsl(r, g, b);
+      h = (h + 180) % 360;
+      const [newR, newG, newB] = this.hslToRgb(h, s, l);
+      return this.rgbToHex(newR, newG, newB);
+    },
+
+    // Get a brightness-based contrasting color candidate.
+    getBrightnessContrastCandidate: function (hexColor) {
+      const [r, g, b] = this.hexToRgb(hexColor);
+      let [h, s, l] = this.rgbToHsl(r, g, b);
+      // For light backgrounds, darken; for dark, lighten.
+      l = this.getLuminance(hexColor) > 0.5 ? Math.max(0, l - 40) : Math.min(100, l + 40);
+      return this.rgbToHex(...this.hslToRgb(h, s, l));
+    },
+
+    // Adjust candidate text color's lightness until desired contrast ratio is met.
+    adjustContrast: function (candidateHex, bgHex, threshold) {
+      let [h, s, l] = this.rgbToHsl(...this.hexToRgb(candidateHex));
+      let contrast = this.getContrastRatio(bgHex, candidateHex);
+      let iterations = 0;
+      const bgLuminance = this.getLuminance(bgHex);
+      // Adjust in steps of 5% until threshold met or 20 iterations reached.
+      while (contrast < threshold && iterations < 20) {
+        l = bgLuminance > 0.5 ? Math.max(0, l - 5) : Math.min(100, l + 5);
+        candidateHex = this.rgbToHex(...this.hslToRgb(h, s, l));
+        contrast = this.getContrastRatio(bgHex, candidateHex);
+        iterations++;
+      }
+      return candidateHex;
+    },
+
+    // Parse an input color string to HEX.
+    // Supports: hex (#abc, #aabbcc), rgb/rgba, hsl.
+    parseColor: function (input) {
+      input = input.trim();
+      // HEX formats
+      if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(input)) {
+        return input;
+      }
+      // rgb or rgba (ignoring alpha)
+      if (/^rgba?\(/i.test(input)) {
+        const rgbValues = input.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/i);
+        if (rgbValues) {
+          const r = parseInt(rgbValues[1], 10);
+          const g = parseInt(rgbValues[2], 10);
+          const b = parseInt(rgbValues[3], 10);
+          return this.rgbToHex(r, g, b);
+        }
+      }
+      // hsl format
+      if (/^hsl\(/i.test(input)) {
+        const hslValues = input.match(/hsl\(\s*(\d+)[,\s]+(\d+)%[,\s]+(\d+)%/i);
+        if (hslValues) {
+          const h = parseInt(hslValues[1], 10);
+          const s = parseInt(hslValues[2], 10);
+          const l = parseInt(hslValues[3], 10);
+          const [r, g, b] = this.hslToRgb(h, s, l);
+          return this.rgbToHex(r, g, b);
+        }
+      }
+      console.error("Could not parse color:", input);
+      return null;
+    }
+  };
+
+  // ---------- Main Color Update Function ----------
+  // Options:
+  //   contrastMethod: 'complementary' or 'brightness'
+  //   contrastThreshold: desired contrast ratio (default: 4.5)
+  function updateColors(options = {}) {
+    const { contrastMethod = "complementary", contrastThreshold = 4.5 } = options;
+    const inputColor = document.querySelector("#uic").value;
+    let hexColor = ColorUtils.parseColor(inputColor);
+    if (!hexColor) {
+      hexColor = "#000000"; // fallback to black
+    }
+    // Apply background color.
+    document.body.style.backgroundColor = hexColor;
+
+    // Choose candidate based on selected method.
+    let candidateTextColor =
+      contrastMethod === "brightness"
+        ? ColorUtils.getBrightnessContrastCandidate(hexColor)
+        : ColorUtils.getComplementaryColor(hexColor);
+
+    // Adjust candidate until contrast threshold is met.
+    candidateTextColor = ColorUtils.adjustContrast(candidateTextColor, hexColor, contrastThreshold);
+    // Apply text color.
+    document.body.style.color = candidateTextColor;
+
+    console.log(
+      "Background:",
+      hexColor,
+      "Text:",
+      candidateTextColor,
+      "Contrast Ratio:",
+      ColorUtils.getContrastRatio(hexColor, candidateTextColor)
+    );
+  }
+
+  // ---------- Attach Debounced Event Listener to Your Color Input ----------
+  const debouncedUpdate = debounce(() => updateColors({ contrastMethod: "complementary", contrastThreshold: 4.5 }), 300);
+  document.querySelector("#uic").addEventListener("input", debouncedUpdate);
+
+  // Optionally, update colors on page load.
+  updateColors({ contrastMethod: "complementary", contrastThreshold: 4.5 });
+})();
+
+  </script>
+</body>
+</html>
